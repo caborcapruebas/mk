@@ -1,0 +1,973 @@
+# jan/25/2024 11:20:02 by RouterOS 6.49.4
+# software id = DACE-FCV0
+#
+# model = 951Ui-2HnD
+# serial number = 43CE02340315
+/interface ethernet
+set [ find default-name=ether1 ] name=WAN1
+set [ find default-name=ether2 ] name=WAN2
+set [ find default-name=ether3 ] name=WAN3
+set [ find default-name=ether4 ] name=WAN4
+set [ find default-name=ether5 ] name=ether5_LAN
+/interface wireless
+set [ find default-name=wlan1 ] ssid=MikroTik
+/interface list
+add name=LAN
+add name=WAN
+/interface wireless security-profiles
+set [ find default=yes ] supplicant-identity=MikroTik
+/interface list member
+add interface=ether5_LAN list=LAN
+add interface=WAN1 list=WAN
+add interface=WAN2 list=WAN
+add interface=WAN3 list=WAN
+add interface=WAN4 list=WAN
+/ip address
+add address=192.168.222.222/16 interface=ether5_LAN network=192.168.0.0
+/ip dhcp-client
+add add-default-route=no disabled=no interface=WAN1 script="\r\
+    \n:local gateway [/ip dhcp-client get [find interface=\"WAN1\"] gateway];\
+    \r\
+    \n/ip route \r\
+    \nset [ find routing-mark=\"to_ISP1\" ] gateway=\"\$gateway%WAN3\"; \r\
+    \nset [ find routing-mark=\"monitor_ISP1\" ] gateway=\"\$gateway%WAN1\"; \
+    \r\
+    \n/ip firewall mangle \r\
+    \nset [ find comment=\"fo_ip_gw1\" ] dst-address=\$gateway; "
+add add-default-route=no disabled=no interface=WAN2 script="\r\
+    \n:local gateway [/ip dhcp-client get [find interface=\"WAN2\"] gateway];\
+    \r\
+    \n/ip route \r\
+    \nset [ find routing-mark=\"to_ISP2\" ] gateway=\"\$gateway%WAN2\"; \r\
+    \nset [ find routing-mark=\"monitor_ISP2\" ] gateway=\"\$gateway%WAN2\"; \
+    \r\
+    \n/ip firewall mangle \r\
+    \nset [ find comment=\"fo_ip_gw2\" ] dst-address=\$gateway; "
+add add-default-route=no disabled=no interface=WAN3 script="\r\
+    \n:local gateway [/ip dhcp-client get [find interface=\"WAN3\"] gateway];\
+    \r\
+    \n/ip route \r\
+    \nset [ find routing-mark=\"to_ISP3\" ] gateway=\"\$gateway%WAN3\"; \r\
+    \nset [ find routing-mark=\"monitor_ISP3\" ] gateway=\"\$gateway%WAN3\"; \
+    \r\
+    \n/ip firewall mangle \r\
+    \nset [ find comment=\"fo_ip_gw3\" ] dst-address=\$gateway; "
+add add-default-route=no disabled=no interface=WAN4 script="\r\
+    \n:local gateway [/ip dhcp-client get [find interface=\"WAN4\"] gateway];\
+    \r\
+    \n/ip route \r\
+    \nset [ find routing-mark=\"to_ISP4\" ] gateway=\"\$gateway%WAN4\"; \r\
+    \nset [ find routing-mark=\"monitor_ISP4\" ] gateway=\"\$gateway%WAN4\"; \
+    \r\
+    \n/ip firewall mangle \r\
+    \nset [ find comment=\"fo_ip_gw4\" ] dst-address=\$gateway; "
+/ip dns
+set allow-remote-requests=yes servers=8.8.8.8
+/ip firewall mangle
+add action=accept chain=prerouting comment=fo_ip_gw1 dst-address=192.168.1.1 \
+    in-interface-list=LAN
+add action=accept chain=prerouting comment=fo_ip_gw2 dst-address=172.16.0.1 \
+    in-interface-list=LAN
+add action=accept chain=prerouting comment=fo_ip_gw3 dst-address=\
+    192.168.250.250 in-interface-list=LAN
+add action=accept chain=prerouting comment=fo_ip_gw4 dst-address=\
+    192.168.250.250 in-interface-list=LAN
+add action=mark-connection chain=prerouting connection-mark=no-mark \
+    in-interface=WAN1 new-connection-mark=ISP1_conn
+add action=mark-connection chain=prerouting connection-mark=no-mark \
+    in-interface=WAN2 new-connection-mark=ISP2_conn
+add action=mark-connection chain=prerouting connection-mark=no-mark \
+    in-interface=WAN3 new-connection-mark=ISP3_conn
+add action=mark-connection chain=prerouting connection-mark=no-mark \
+    in-interface=WAN4 new-connection-mark=ISP4_conn
+add action=mark-connection chain=prerouting connection-mark=no-mark \
+    dst-address-type=!local in-interface-list=LAN new-connection-mark=\
+    ISP1_conn per-connection-classifier=both-addresses:2/0
+add action=mark-connection chain=prerouting connection-mark=no-mark \
+    dst-address-type=!local in-interface-list=LAN new-connection-mark=\
+    ISP2_conn per-connection-classifier=both-addresses:2/1
+add action=mark-connection chain=prerouting connection-mark=no-mark disabled=\
+    yes dst-address-type=!local in-interface-list=LAN new-connection-mark=\
+    ISP3_conn per-connection-classifier=both-addresses:4/2
+add action=mark-connection chain=prerouting connection-mark=no-mark disabled=\
+    yes dst-address-type=!local in-interface-list=LAN new-connection-mark=\
+    ISP4_conn per-connection-classifier=both-addresses:4/3
+add action=log chain=forward comment=fo_bandera_pcc disabled=yes
+add action=mark-routing chain=prerouting connection-mark=ISP1_conn \
+    in-interface-list=LAN new-routing-mark=to_ISP1 passthrough=no
+add action=mark-routing chain=prerouting connection-mark=ISP2_conn \
+    in-interface-list=LAN new-routing-mark=to_ISP2 passthrough=no
+add action=mark-routing chain=prerouting connection-mark=ISP3_conn \
+    in-interface-list=LAN new-routing-mark=to_ISP3 passthrough=no
+add action=mark-routing chain=prerouting connection-mark=ISP4_conn \
+    in-interface-list=LAN new-routing-mark=to_ISP4 passthrough=no
+add action=mark-routing chain=output connection-mark=ISP1_conn \
+    new-routing-mark=to_ISP1 passthrough=no
+add action=mark-routing chain=output connection-mark=ISP2_conn \
+    new-routing-mark=to_ISP2 passthrough=no
+add action=mark-routing chain=output connection-mark=ISP3_conn \
+    new-routing-mark=to_ISP3 passthrough=no
+add action=mark-routing chain=output connection-mark=ISP4_conn \
+    new-routing-mark=to_ISP4 passthrough=no
+/ip firewall nat
+add action=masquerade chain=srcnat comment=\
+    "NAT para los paquetes que salgan por las interfaces WAN" \
+    out-interface-list=WAN
+/ip firewall service-port
+set ftp disabled=yes
+set tftp disabled=yes
+set irc disabled=yes
+set h323 disabled=yes
+set sip disabled=yes
+set pptp disabled=yes
+set udplite disabled=yes
+set dccp disabled=yes
+set sctp disabled=yes
+/ip route
+add distance=1 gateway=192.168.1.1%WAN3 routing-mark=to_ISP1
+add distance=1 gateway=172.16.0.1%WAN2 routing-mark=to_ISP2
+add distance=1 gateway=192.168.251.251%WAN3 routing-mark=to_ISP3
+add distance=1 gateway=192.168.251.251%WAN4 routing-mark=to_ISP4
+add check-gateway=ping distance=1 gateway=192.168.1.1%WAN1 routing-mark=\
+    monitor_ISP1
+add check-gateway=ping distance=1 gateway=172.16.0.1%WAN2 routing-mark=\
+    monitor_ISP2
+add check-gateway=ping distance=1 gateway=192.168.251.251%WAN3 routing-mark=\
+    monitor_ISP3
+add check-gateway=ping distance=1 gateway=192.168.251.251%WAN4 routing-mark=\
+    monitor_ISP4
+add comment="fo_ruta_defecto 1" distance=1 gateway=192.168.1.1%WAN1
+/ip service
+set telnet disabled=yes
+set ftp disabled=yes
+set ssh disabled=yes
+/system clock
+set time-zone-name=America/Mexico_City
+/system identity
+set name="Balanceador de carga PCC con Failover v5"
+/system note
+set show-at-login=no
+/system scheduler
+add interval=15s name=lanzadorFailover on-event="# Scheduler que se encarga de\
+    \_verificar que el failover\r\
+    \n# no se este ejecutando previamente para evitar duplicidad de procesos\r\
+    \n:local idJobEjecucion [/system script job find script=\"failover\"];\r\
+    \n\r\
+    \n# Si el script esta en ejecucion evita lanzar por segunda vez el script\
+    \r\
+    \n:if (\$idJobEjecucion!=\"\" ) do={ :return 0; };\r\
+    \n\r\
+    \n# Si no se esta ejecutando previamente se lanza el script\r\
+    \n/system script run \"failover\"; " policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-date=jan/01/1970 start-time=00:00:00
+add interval=30s name=lanzadorFailoverIsp1 on-event="# Scheduler que se encarg\
+    a de verificar que el failoverIsp1\r\
+    \n# no se este ejecutando previamente para evitar duplicidad de procesos\r\
+    \n:local idJobEjecucion [/system script job find script=\"failoverIsp1\"];\
+    \r\
+    \n\r\
+    \n# Si el script esta en ejecucion evita lanzar por segunda vez el script\
+    \r\
+    \n:if (\$idJobEjecucion!=\"\" ) do={ :return 0; };\r\
+    \n\r\
+    \n# Si no se esta ejecutando previamente se lanza el script\r\
+    \n/system script run \"failoverIsp1\"; " policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-date=jan/01/1970 start-time=00:00:00
+add interval=30s name=lanzadorFailoverIsp2 on-event="# Scheduler que se encarg\
+    a de verificar que el failoverIsp2\r\
+    \n# no se este ejecutando previamente para evitar duplicidad de procesos\r\
+    \n:local idJobEjecucion [/system script job find script=\"failoverIsp2\"];\
+    \r\
+    \n\r\
+    \n# Si el script esta en ejecucion evita lanzar por segunda vez el script\
+    \r\
+    \n:if (\$idJobEjecucion!=\"\" ) do={ :return 0; };\r\
+    \n\r\
+    \n# Si no se esta ejecutando previamente se lanza el script\r\
+    \n/system script run \"failoverIsp2\"; " policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-date=jan/01/1970 start-time=00:00:00
+add interval=30s name=lanzadorFailoverIsp3 on-event="# Scheduler que se encarg\
+    a de verificar que el failoverIsp3\r\
+    \n# no se este ejecutando previamente para evitar duplicidad de procesos\r\
+    \n:local idJobEjecucion [/system script job find script=\"failoverIsp3\"];\
+    \r\
+    \n\r\
+    \n# Si el script esta en ejecucion evita lanzar por segunda vez el script\
+    \r\
+    \n:if (\$idJobEjecucion!=\"\" ) do={ :return 0; };\r\
+    \n\r\
+    \n# Si no se esta ejecutando previamente se lanza el script\r\
+    \n/system script run \"failoverIsp3\"; " policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-date=jan/01/1970 start-time=00:00:00
+add interval=30s name=lanzadorFailoverIsp4 on-event="# Scheduler que se encarg\
+    a de verificar que el failoverIsp4\r\
+    \n# no se este ejecutando previamente para evitar duplicidad de procesos\r\
+    \n:local idJobEjecucion [/system script job find script=\"failoverIsp4\"];\
+    \r\
+    \n\r\
+    \n# Si el script esta en ejecucion evita lanzar por segunda vez el script\
+    \r\
+    \n:if (\$idJobEjecucion!=\"\" ) do={ :return 0; };\r\
+    \n\r\
+    \n# Si no se esta ejecutando previamente se lanza el script\r\
+    \n/system script run \"failoverIsp4\"; " policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-date=jan/01/1970 start-time=00:00:00
+/system script
+add dont-require-permissions=no name=failoverConfig owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    #####\r\
+    \n# Configuracion del failover \r\
+    \n########################################################################\
+    ########\r\
+    \n# Declaracion de variables principales\r\
+    \n\
+    \n:global foCorreoAdministrador \"lizarraga.lazaro@gmail.com\";\
+    \n\r\
+    \n:global foIsps;\r\
+    \n:global foCambioEnEstadoIsps;\r\
+    \n\r\
+    \n\r\
+    \n# Aseguramiento de existencia de variables \r\
+    \n:if ([:typeof \$foIsps]=\"nothing\") do={ :set foIsps [:toarray \"\"]; }\
+    ;\r\
+    \n:if ([:typeof \$foCambioEnEstadoIsps]=\"nothing\") do={ :set foCambioEnE\
+    stadoIsps 0; };\r\
+    \n\r\
+    \n\r\
+    \n# Importante:\r\
+    \n# La configuracion y verificacion de cada uno de los servicios de los IS\
+    P\r\
+    \n# son registrados en los scripts failoverIsp<N> y failoverCheckIsp<N>,\r\
+    \n# y los lanzadores lanzadorFailoverIsp<N> se encarga de agilizar la veri\
+    ficacion \r\
+    \n# de todos los servicios en paralelo.\r\
+    \n\r"
+add dont-require-permissions=no name=\
+    failoverActualizadorCapacidadesISPsBalanceador owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    \_Actualizador de capacidades de ISPs\r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n\r\
+    \n:local idpcc [/ip firewall mangle find comment=\"fo_bandera_pcc\"];\r\
+    \n:local pasos;\r\
+    \n\r\
+    \n# Eliminacion de las reglas pcc inservibles, a excepcion de la fo_bander\
+    a_pcc\r\
+    \n:local idsReglasPcc [/ip firewall mangle find per-connection-classifier~\
+    \"both-addresses\" and comment!=\"fo_bandera_pcc\"];\r\
+    \n\r\
+    \n:foreach id in=[\$idsReglasPcc] do={\r\
+    \n    /ip firewall mangle remove [find .id=\$id];\r\
+    \n}\r\
+    \n\r\
+    \n# Calculo de los pasos totales\r\
+    \n:set pasos 0;\r\
+    \n:foreach isp in=[\$foIsps] do={\r\
+    \n    :set pasos (\$pasos + (\$isp->\"capacidad\"));\r\
+    \n}\r\
+    \n\r\
+    \n# Registro de las nuevas reglas pcc en funcion de los ISPs\r\
+    \n:local indiceMaestro 0;\r\
+    \nforeach isp in=[\$foIsps] do={\r\
+    \n    :for i from=1 to=(\$isp->\"capacidad\") step=1 do={\r\
+    \n        :local idIsp (\$isp->\"id\");\r\
+    \n        /ip firewall mangle add action=mark-connection chain=prerouting \
+    connection-mark=no-mark dst-address-type=!local in-interface-list=LAN new-\
+    connection-mark=(\"ISP\".\$idIsp.\"_conn\") per-connection-classifier=(\"b\
+    oth-addresses:\".\$pasos.\"/\".\$indiceMaestro) \r\
+    \n        :set indiceMaestro (\$indiceMaestro+1);\r\
+    \n    }\r\
+    \n}\r\
+    \n\r\
+    \n# Movimiento de las reglas pcc a su nueva posicion para mantener la prio\
+    ridad\r\
+    \n:set idsReglasPcc [/ip firewall mangle find per-connection-classifier~\"\
+    both-addresses\"];\r\
+    \n:foreach idRegla in=[\$idsReglasPcc] do={\r\
+    \n    if (\$idRegla != \$idpcc ) do={\r\
+    \n        /ip firewall mangle move [find .id=\$idRegla] destination=\$idpc\
+    c\r\
+    \n    }\r\
+    \n}\r\
+    \n\r\
+    \n\r\
+    \n# Actualizacion de las capacidades anteriores de los ISP \r\
+    \n:foreach k,isp in=[\$foIsps] do={\r\
+    \n    :set ((\$foIsps->\$k)->\"capacidad_anterior\") (\$isp->\"capacidad\"\
+    );\r\
+    \n};\r\
+    \n\r\
+    \n:log info \"Se actualizaron las capacidades de los ISPs\";\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=\
+    failoverActualizadorReglasMangleBalanceador owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    \r\
+    \n# Actualizador de reglas Mangle\r\
+    \n#\r\
+    \n# Modifica las reglas mangle cuando alguno de los servicios se encuentra\
+    \_caido\r\
+    \n########################################################################\
+    \r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n\r\
+    \n:local pasos;\r\
+    \n:local pasosTmp;\r\
+    \n:local idIsp;\r\
+    \n:local idsReglas;\r\
+    \n:local disabledtmp;\r\
+    \n:local idsTmp;\r\
+    \n\r\
+    \n\r\
+    \n# Calculo de los pasos totales\r\
+    \n:set pasos 0;\r\
+    \n:foreach isp in=[\$foIsps] do={\r\
+    \n  # Si el estado actual es 1 (activo) entonces se suma su \r\
+    \n  # capacidad a los pasos totales\r\
+    \n  :if ( (\$isp->\"estado_actual\") = 1 ) do={\r\
+    \n    :set pasos (\$pasos + (\$isp->\"capacidad\"));\r\
+    \n  }\r\
+    \n}\r\
+    \n#:log info \$pasos;\r\
+    \n\r\
+    \n/ip firewall mangle;\r\
+    \n\r\
+    \n:set pasosTmp 0;\r\
+    \n:foreach isp in=[\$foIsps] do={\r\
+    \n  :set idIsp (\$isp->\"id\");\r\
+    \n\r\
+    \n  # Si el ISP esta ACTIVO se procede a actualizar las reglas con los \"p\
+    asos\" correctos\r\
+    \n  :if ( (\$isp->\"estado_actual\") = 1 ) do={\r\
+    \n    # Obtencion de los IDs de las reglas del ISP con new-connection-mark\
+    \r\
+    \n    :set idsReglas [find new-connection-mark=\"ISP\$idIsp_conn\" and per\
+    -connection-classifier~\"both-addresses\" and comment!=\"fo_bandera_pcc\"]\
+    ;\r\
+    \n\r\
+    \n    # Por cada ID de la regla se procede a asignar el total de pasos y e\
+    l n\FAmero de paso correspondiente\r\
+    \n    :foreach idRegla in=[\$idsReglas] do={\r\
+    \n      set [find .id=\$idRegla] per-connection-classifier=\"both-addresse\
+    s:\$pasos/\$pasosTmp\"\r\
+    \n\r\
+    \n      #Incremento del contador de pasosTmp\r\
+    \n      :set pasosTmp (\$pasosTmp + 1);\r\
+    \n    }\r\
+    \n\r\
+    \n    # Activacion de las reglas del ISP activo\r\
+    \n    :set idsTmp [find new-connection-mark=\"ISP\$idIsp_conn\" and per-co\
+    nnection-classifier~\"both-addresses\" and comment!=\"fo_bandera_pcc\"];\r\
+    \n    :foreach idtmp in [\$idsTmp] do={\r\
+    \n        :set disabledtmp [get \$idtmp disabled];\r\
+    \n        :if ( \$disabledtmp = true ) do={\r\
+    \n            enable \$idtmp;\r\
+    \n        }\r\
+    \n    }\r\
+    \n\r\
+    \n  # Si el ISP esta CAIDO se procede a desactivar las reglas\r\
+    \n  } else={\r\
+    \n    :set idsTmp [find new-connection-mark=\"ISP\$idIsp_conn\" and per-co\
+    nnection-classifier~\"both-addresses\" and comment!=\"fo_bandera_pcc\"];\r\
+    \n    :foreach idtmp in [\$idsTmp] do={\r\
+    \n        :set disabledtmp [get \$idtmp disabled];\r\
+    \n        :if ( \$disabledtmp = false ) do={\r\
+    \n            disable \$idtmp;\r\
+    \n        }\r\
+    \n    }\r\
+    \n  }\r\
+    \n}\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failover owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################\r\
+    \n# Script Failover para router con N ISPs\r\
+    \n###########################################\r\
+    \n\r\
+    \n/system script;\r\
+    \n\r\
+    \n# Carga del failoverConfig\r\
+    \nrun failoverConfig;\r\
+    \nrun failoverActualizarRutaDefecto;\r\
+    \n\r\
+    \n# Declaracion de variables\r\
+    \n:global foIsps;\r\
+    \n:global foCambioEnEstadoIsps;\r\
+    \n:global failoverActualizarRutaDefecto;\r\
+    \n\r\
+    \n:local cambiosEnCapacidades 0;\r\
+    \n:local dirIpRPDValida       false;\r\
+    \n:local gatewayRPD ;\r\
+    \n\r\
+    \n# Deteccion de cambios y actualizacion de capacidades de los servicios d\
+    e internet\r\
+    \n:foreach isp in=[\$foIsps] do={\r\
+    \n    :if ( (\$isp->\"capacidad\") != (\$isp->\"capacidad_anterior\") ) do\
+    ={\r\
+    \n        :set cambiosEnCapacidades (\$cambiosEnCapacidades + 1);\r\
+    \n    };\r\
+    \n};\r\
+    \n:if (\$cambiosEnCapacidades > 0) do={ run failoverActualizadorCapacidade\
+    sISPs; }\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n# Validacion de la direccion IP del gateway de la ruta por defecto \r\
+    \n{\r\
+    \n    /ip route;\r\
+    \n    :set gatewayRPD [get [find comment~\"fo_ruta_defecto\"] gateway];\r\
+    \n    :foreach ruta in [find routing-mark~\"monitor_ISP\"] do={\r\
+    \n        :if ( [get \$ruta gateway] = \$gatewayRPD ) do={\r\
+    \n            :set dirIpRPDValida true;\r\
+    \n        };\r\
+    \n    };\r\
+    \n    :if ( \$dirIpRPDValida = false ) do={ \$failoverActualizarRutaDefect\
+    o; };\r\
+    \n}\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n# Si no hubo un cambio en el estado de los ISPs se evita continuar\r\
+    \n:if (\$foCambioEnEstadoIsps=0) do={ :return 0; };\r\
+    \n\r\
+    \n\r\
+    \n# Si hubo cambios entre los ISPs, se procede a liberar y reiniciar los \
+    \r\
+    \n# clientes dhcp de las interfaces wan, actualizar la ruta por defecto y \
+    \r\
+    \n# se envia notificacion con los cambios en los ISPs \r\
+    \nrun failoverDhcpClientRelease;\r\
+    \n\r\
+    \n# Actualizador de reglas Mangle\r\
+    \nrun failoverActualizadorReglasMangle;\r\
+    \n\r\
+    \n\r\
+    \n######################################################################\r\
+    \n# Si se llega a este punto es por que hubo cambios en los ISPs caidos\r\
+    \n######################################################################\r\
+    \n\$failoverActualizarRutaDefecto;\r\
+    \n\r\
+    \n# Se reinicia el estado de la bandera\r\
+    \n:set foCambioEnEstadoIsps 0;\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverDhcpClientRelease owner=admin \
+    policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    source="##################################################################\
+    ########\r\
+    \n# Script que se encarga de liberar y reiniciar el cliente DHCP\r\
+    \n# para las interfaces WAN que han vuelto a tener servicio de internet\r\
+    \n########################################################################\
+    ##\r\
+    \n\r\
+    \n# Carga del failoverConfig\r\
+    \n/system script run failoverConfig;\r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n:local  id;\r\
+    \n:local  interfaz;\r\
+    \n:local  dhcp;\r\
+    \n:local  releaseDhcp;\r\
+    \n:local  estadoActual;\r\
+    \n:local  estadoAnterior;\r\
+    \n\r\
+    \n# Se van a liberar los servicios de los ISPs que sufrieron algun cambio \
+    \r\
+    \n:foreach isp in=[\$foIsps] do={\r\
+    \n    :set id             (\$isp->\"id\");\r\
+    \n    :set interfaz       (\$isp->\"interfaz\");\r\
+    \n    :set dhcp           (\$isp->\"dhcp\");\r\
+    \n    :set releaseDhcp    (\$isp->\"release_dhcp\");\r\
+    \n    :set estadoActual   (\$isp->\"estado_actual\");\r\
+    \n    :set estadoAnterior (\$isp->\"estado_anterior\");\r\
+    \n\r\
+    \n    :if ( \$dhcp = 1 && \$releaseDhcp = 1 ) do={\r\
+    \n        /ip dhcp-client release [find interface=\"\$interfaz\"];\r\
+    \n\r\
+    \n        # Se marca en 0 para indicar que la interfaz fue liberada \r\
+    \n        :set ((\$foIsps->\"\$id\")->\"release_dhcp\") 0;\r\
+    \n    };\r\
+    \n};"
+add dont-require-permissions=no name=failoverActualizarRutaDefecto owner=\
+    admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    \r\
+    \n# Funcion que actualiza la ruta por defecto del router \r\
+    \n########################################################################\
+    \r\
+    \n:global failoverActualizarRutaDefecto;\r\
+    \n\r\
+    \n# Si no esta cargada la funcion se procede a cargar\r\
+    \n:if ( [:typeof \$failoverActualizarRutaDefecto] = \"nothing\" ) do={\r\
+    \n    :set failoverActualizarRutaDefecto do={\r\
+    \n        # Carga del failoverConfig\r\
+    \n        /system script run failoverConfig;\r\
+    \n        \r\
+    \n        :global foIsps;\r\
+    \n        \r\
+    \n        :local rdef;\r\
+    \n        :local gateway;\r\
+    \n        :local gatewayMonitor;\r\
+    \n        :local comment;\r\
+    \n        :local prioridadRdef;\r\
+    \n        :local nvaprisel;\r\
+    \n        :local srvConInt;\r\
+    \n        :local activo 0;\r\
+    \n        \r\
+    \n        /ip route;\r\
+    \n        \r\
+    \n        # Valida que el servicio actual tenga acceso a internet\r\
+    \n        :set rdef       [find comment~\"fo_ruta_defecto\"];\r\
+    \n        :set gateway    [get \$rdef gateway];\r\
+    \n        :set comment    [get \$rdef comment];\r\
+    \n        \r\
+    \n        # Obtencion de la prioridad de la ruta por defecto\r\
+    \n        :do {\r\
+    \n            :set prioridadRdef [:tonum [:pick \$comment 16 [:len \$comme\
+    nt]]];\r\
+    \n        } on-error={\r\
+    \n            :set prioridadRdef 10000;\r\
+    \n        };\r\
+    \n        :if ( [:typeof \$prioridadRdef] = \"nil\" || \$prioridadRdef = 0\
+    \_|| \$prioridadRdef=\"\" ) do={ \r\
+    \n            :set prioridadRdef 10000; \r\
+    \n        };\r\
+    \n        \r\
+    \n        # Verifica si el servicio se encuentra activo para el gateway de\
+    \_\r\
+    \n        # la ruta por defecto\r\
+    \n        :foreach isp in=[\$foIsps] do={\r\
+    \n            :set gatewayMonitor [get [find routing-mark=(\"monitor_ISP\"\
+    .(\$isp->\"id\"))] gateway];\r\
+    \n            :if (\$gatewayMonitor = \$gateway && (\$isp->\"estado_actual\
+    \")=1) do={\r\
+    \n                :set activo 1;\r\
+    \n            };\r\
+    \n        };\r\
+    \n        \r\
+    \n        :if ( \$activo = 1 ) do={\r\
+    \n            :set nvaprisel \$prioridadRdef;\r\
+    \n        } else={\r\
+    \n            :set nvaprisel 10000;\r\
+    \n        };\r\
+    \n        \r\
+    \n        \r\
+    \n        # Se esta activo o no el servicio se busca un Servicio Con Inter\
+    net activo y mayor prioridad\r\
+    \n        :foreach isp in=[\$foIsps] do={\r\
+    \n            :if ((\$isp->\"prioridad\") < \$nvaprisel && (\$isp->\"estad\
+    o_actual\")=1) do={\r\
+    \n                :set nvaprisel (\$isp->\"prioridad\");\r\
+    \n                :set srvConInt \$isp;\r\
+    \n            };\r\
+    \n        };\r\
+    \n        \r\
+    \n        # Si no se encontro ningun servicio disponible, se evita continu\
+    ar\r\
+    \n        :if ([:typeof \$srvConInt]=\"nothing\") do={ :return 0; };\r\
+    \n        \r\
+    \n        # Si se encontro un servicio disponible con mayor prioridad y cu\
+    yo gateway\r\
+    \n        # es igual que el de la ruta por defecto, se evita continuar\r\
+    \n        \r\
+    \n        :set gatewayMonitor [get [find routing-mark=(\"monitor_ISP\".(\$\
+    srvConInt->\"id\"))] gateway];\r\
+    \n        :if ( \$gatewayMonitor = \$gateway ) do={ :return 0; };\r\
+    \n        \r\
+    \n        \r\
+    \n        # SI SE ENCONTRO UN SERVICIO CON LA PRIORIDAD MAS ALTA DISPONIBL\
+    E, \r\
+    \n        # se procede a realizar la actualizacion de la ruta por defecto\
+    \r\
+    \n        set \$rdef gateway=\$gatewayMonitor comment=\"fo_ruta_defecto \$\
+    nvaprisel\";\r\
+    \n    }\r\
+    \n};\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverCheckIsp owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    ###\r\
+    \n# Funcion que verifica que exista conexion a internet a traves del ISP \
+    \r\
+    \n#\r\
+    \n# Soporta el parametro \$id\r\
+    \n########################################################################\
+    ######\r\
+    \n:global failoverCheckIsp;\r\
+    \n\r\
+    \n:if ( [:typeof \$failoverCheckIsp] = \"nothing\" ) do={\r\
+    \n    :set failoverCheckIsp do={\r\
+    \n        # Carga del failoverConfig\r\
+    \n        /system script run failoverConfig;\r\
+    \n    \r\
+    \n        :global foIsps;\r\
+    \n        :global foCambioEnEstadoIsps;\r\
+    \n    \r\
+    \n    \r\
+    \n        # Identificador del servicio de internet\r\
+    \n        # \$id  es un paretro de esta funcion failoverCheckIsp\r\
+    \n        :local interfaz         ((\$foIsps->\"\$id\")->\"interfaz\");\r\
+    \n        :local dhcp             ((\$foIsps->\"\$id\")->\"dhcp\"); \r\
+    \n        :local prioridad        ((\$foIsps->\"\$id\")->\"prioridad\");\r\
+    \n        :local dirIpHost        ((\$foIsps->\"\$id\")->\"diriphost\");\r\
+    \n        :local nPruebasPing     ((\$foIsps->\"\$id\")->\"npruebasping\")\
+    ;\r\
+    \n    \r\
+    \n        :local estadoActual     0;\r\
+    \n        :local estadoAnterior   0;\r\
+    \n        :local rping            0;\r\
+    \n    \r\
+    \n    \r\
+    \n        :set estadoAnterior ((\$foIsps->\"\$id\")->\"estado_actual\");\r\
+    \n        :set ((\$foIsps->\"\$id\")->\"estado_anterior\") \$estadoAnterio\
+    r;\r\
+    \n    \r\
+    \n        :set rping [/ping \$dirIpHost routing-table=\"monitor_ISP\$id\" \
+    interface=\"\$interfaz\" count=\$nPruebasPing size=28];\r\
+    \n    \r\
+    \n        # Actualizacion del estado actual del ISP\r\
+    \n        :if (\$rping=0) do={ \r\
+    \n            :set ((\$foIsps->\"\$id\")->\"estado_actual\") 0; \r\
+    \n        } else={ \r\
+    \n            :set ((\$foIsps->\"\$id\")->\"estado_actual\") 1; \r\
+    \n        };\r\
+    \n    \r\
+    \n        :set estadoActual ((\$foIsps->\"\$id\")->\"estado_actual\");\r\
+    \n    \r\
+    \n    \r\
+    \n        # Si hubo un cambio en el estado del servicio del ISP se activa \
+    la \r\
+    \n        # bandera para enviar la notificacion de cambio en los ISPs\r\
+    \n        :if (\$estadoActual!=\$estadoAnterior) do={ \r\
+    \n            :set \$foCambioEnEstadoIsps 1; \r\
+    \n    \r\
+    \n            # Activa la bandera que indica que se debe liberar la interf\
+    az\r\
+    \n            :if ( \$dhcp = 1 ) do={\r\
+    \n                :set ((\$foIsps->\"\$id\")->\"release_dhcp\") 1;\r\
+    \n            };\r\
+    \n        };\r\
+    \n    };\r\
+    \n}; \r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverIsp1 owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    #######\r\
+    \n# Failover para el servicio del ISP 1\r\
+    \n########################################################################\
+    ##########\r\
+    \n\r\
+    \n/system script;\r\
+    \nrun failoverConfig;\r\
+    \nrun failoverCheckIsp;\r\
+    \n\r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n:global failoverCheckIsp;\r\
+    \n\r\
+    \n# Datos del servicio ISP que tiene el failover\r\
+    \n:local id               \"1\";\r\
+    \n:local interfaz         \"WAN1\";\r\
+    \n:local dhcp             0; \r\
+    \n:local prioridad        1;\r\
+    \n:local dirIpHost        \"1.1.1.1\";\r\
+    \n:local nPruebasPing     3;\r\
+    \n:local capacidad        1;\r\
+    \n\r\
+    \n:local rutaIsp;\r\
+    \n:local gatewayRutaIsp;\r\
+    \n:local gatewaySrvConInt;\r\
+    \n:local estado;\r\
+    \n:local estadoAux;\r\
+    \n:local srvConInt;\r\
+    \n:local idAuxStr;\r\
+    \n:if ([:typeof (\$foIsps->\"\$id\")] = \"nothing\") do={ :set (\$foIsps->\
+    \"\$id\") {\"z\"=\"z\"}; }; \r\
+    \n\r\
+    \n\r\
+    \n# Si el id, interfaz, gateway, bandera dhcp, prioridad, diriphost o npru\
+    ebasping cambio, se actualizan\r\
+    \n:if (((\$foIsps->\"\$id\")->\"id\")           != \$id)             do={ \
+    :set ((\$foIsps->\"\$id\")->\"id\")              \$id;            };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"interfaz\")     != \$interfaz)       do={ \
+    :set ((\$foIsps->\"\$id\")->\"interfaz\")        \$interfaz;      };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"dhcp\")         != \$dhcp)           do={ \
+    :set ((\$foIsps->\"\$id\")->\"dhcp\")            \$dhcp;          };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"prioridad\")    != \$prioridad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"prioridad\")       \$prioridad;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"diriphost\")    != \$dirIpHost)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"diriphost\")       \$dirIpHost;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"npruebasping\") != \$nPruebasPing)   do={ \
+    :set ((\$foIsps->\"\$id\")->\"npruebasping\")    \$nPruebasPing;  };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"capacidad\")    != \$capacidad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"capacidad\")       \$capacidad;     };\r\
+    \n\r\
+    \n\r\
+    \n# Se lanza el checador del servicio del ISP 1\r\
+    \n\$failoverCheckIsp id=\$id;\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverIsp2 owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    #######\r\
+    \n# Failover para el servicio del ISP 2\r\
+    \n########################################################################\
+    ##########\r\
+    \n\r\
+    \n/system script;\r\
+    \nrun failoverConfig;\r\
+    \nrun failoverCheckIsp;\r\
+    \n\r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n:global failoverCheckIsp;\r\
+    \n\r\
+    \n# Datos del servicio ISP que tiene el failover\r\
+    \n:local id               \"2\";\r\
+    \n:local interfaz         \"WAN2\";\r\
+    \n:local dhcp             0; \r\
+    \n:local prioridad        2;\r\
+    \n:local dirIpHost        \"1.0.0.1\";\r\
+    \n:local nPruebasPing     3;\r\
+    \n:local capacidad        1;\r\
+    \n\r\
+    \n:local rutaIsp;\r\
+    \n:local gatewayRutaIsp;\r\
+    \n:local gatewaySrvConInt;\r\
+    \n:local estado;\r\
+    \n:local estadoAux;\r\
+    \n:local srvConInt;\r\
+    \n:local idAuxStr;\r\
+    \n:if ([:typeof (\$foIsps->\"\$id\")] = \"nothing\") do={ :set (\$foIsps->\
+    \"\$id\") {\"z\"=\"z\"}; }; \r\
+    \n\r\
+    \n\r\
+    \n# Si el id, interfaz, gateway, bandera dhcp, prioridad, diriphost o npru\
+    ebasping cambio, se actualizan\r\
+    \n:if (((\$foIsps->\"\$id\")->\"id\")           != \$id)             do={ \
+    :set ((\$foIsps->\"\$id\")->\"id\")              \$id;            };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"interfaz\")     != \$interfaz)       do={ \
+    :set ((\$foIsps->\"\$id\")->\"interfaz\")        \$interfaz;      };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"dhcp\")         != \$dhcp)           do={ \
+    :set ((\$foIsps->\"\$id\")->\"dhcp\")            \$dhcp;          };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"prioridad\")    != \$prioridad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"prioridad\")       \$prioridad;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"diriphost\")    != \$dirIpHost)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"diriphost\")       \$dirIpHost;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"npruebasping\") != \$nPruebasPing)   do={ \
+    :set ((\$foIsps->\"\$id\")->\"npruebasping\")    \$nPruebasPing;  };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"capacidad\")    != \$capacidad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"capacidad\")       \$capacidad;     };\r\
+    \n\r\
+    \n\r\
+    \n# Se lanza el checador del servicio del ISP 2\r\
+    \n\$failoverCheckIsp id=\$id;\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverIsp3 owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    #######\r\
+    \n# Failover para el servicio del ISP 3\r\
+    \n########################################################################\
+    ##########\r\
+    \n\r\
+    \n/system script;\r\
+    \nrun failoverConfig;\r\
+    \nrun failoverCheckIsp;\r\
+    \n\r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n:global failoverCheckIsp;\r\
+    \n\r\
+    \n# Datos del servicio ISP que tiene el failover\r\
+    \n:local id               \"3\";\r\
+    \n:local interfaz         \"WAN3\";\r\
+    \n:local dhcp             0; \r\
+    \n:local prioridad        3;\r\
+    \n:local dirIpHost        \"8.8.8.8\";\r\
+    \n:local nPruebasPing     3;\r\
+    \n:local capacidad        1;\r\
+    \n\r\
+    \n:local rutaIsp;\r\
+    \n:local gatewayRutaIsp;\r\
+    \n:local gatewaySrvConInt;\r\
+    \n:local estado;\r\
+    \n:local estadoAux;\r\
+    \n:local srvConInt;\r\
+    \n:local idAuxStr;\r\
+    \n:if ([:typeof (\$foIsps->\"\$id\")] = \"nothing\") do={ :set (\$foIsps->\
+    \"\$id\") {\"z\"=\"z\"}; }; \r\
+    \n\r\
+    \n\r\
+    \n# Si el id, interfaz, gateway, bandera dhcp, prioridad, diriphost o npru\
+    ebasping cambio, se actualizan\r\
+    \n:if (((\$foIsps->\"\$id\")->\"id\")           != \$id)             do={ \
+    :set ((\$foIsps->\"\$id\")->\"id\")              \$id;            };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"interfaz\")     != \$interfaz)       do={ \
+    :set ((\$foIsps->\"\$id\")->\"interfaz\")        \$interfaz;      };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"dhcp\")         != \$dhcp)           do={ \
+    :set ((\$foIsps->\"\$id\")->\"dhcp\")            \$dhcp;          };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"prioridad\")    != \$prioridad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"prioridad\")       \$prioridad;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"diriphost\")    != \$dirIpHost)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"diriphost\")       \$dirIpHost;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"npruebasping\") != \$nPruebasPing)   do={ \
+    :set ((\$foIsps->\"\$id\")->\"npruebasping\")    \$nPruebasPing;  };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"capacidad\")    != \$capacidad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"capacidad\")       \$capacidad;     };\r\
+    \n\r\
+    \n\r\
+    \n# Se lanza el checador del servicio del ISP 3\r\
+    \n\$failoverCheckIsp id=\$id;\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverIsp4 owner=admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ##########################################################################\
+    #######\r\
+    \n# Failover para el servicio del ISP 4\r\
+    \n########################################################################\
+    ##########\r\
+    \n\r\
+    \n/system script;\r\
+    \nrun failoverConfig;\r\
+    \nrun failoverCheckIsp;\r\
+    \n\r\
+    \n\r\
+    \n:global foIsps;\r\
+    \n:global failoverCheckIsp;\r\
+    \n\r\
+    \n# Datos del servicio ISP que tiene el failover\r\
+    \n:local id               \"4\";\r\
+    \n:local interfaz         \"WAN4\";\r\
+    \n:local dhcp             0; \r\
+    \n:local prioridad        4;\r\
+    \n:local dirIpHost        \"8.8.4.4\";\r\
+    \n:local nPruebasPing     3;\r\
+    \n:local capacidad        1;\r\
+    \n\r\
+    \n:local rutaIsp;\r\
+    \n:local gatewayRutaIsp;\r\
+    \n:local gatewaySrvConInt;\r\
+    \n:local estado;\r\
+    \n:local estadoAux;\r\
+    \n:local srvConInt;\r\
+    \n:local idAuxStr;\r\
+    \n:if ([:typeof (\$foIsps->\"\$id\")] = \"nothing\") do={ :set (\$foIsps->\
+    \"\$id\") {\"z\"=\"z\"}; }; \r\
+    \n\r\
+    \n\r\
+    \n# Si el id, interfaz, gateway, bandera dhcp, prioridad, diriphost o npru\
+    ebasping cambio, se actualizan\r\
+    \n:if (((\$foIsps->\"\$id\")->\"id\")           != \$id)             do={ \
+    :set ((\$foIsps->\"\$id\")->\"id\")              \$id;            };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"interfaz\")     != \$interfaz)       do={ \
+    :set ((\$foIsps->\"\$id\")->\"interfaz\")        \$interfaz;      };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"dhcp\")         != \$dhcp)           do={ \
+    :set ((\$foIsps->\"\$id\")->\"dhcp\")            \$dhcp;          };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"prioridad\")    != \$prioridad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"prioridad\")       \$prioridad;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"diriphost\")    != \$dirIpHost)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"diriphost\")       \$dirIpHost;     };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"npruebasping\") != \$nPruebasPing)   do={ \
+    :set ((\$foIsps->\"\$id\")->\"npruebasping\")    \$nPruebasPing;  };\r\
+    \n:if (((\$foIsps->\"\$id\")->\"capacidad\")    != \$capacidad)      do={ \
+    :set ((\$foIsps->\"\$id\")->\"capacidad\")       \$capacidad;     };\r\
+    \n\r\
+    \n\r\
+    \n# Se lanza el checador del servicio del ISP 4\r\
+    \n\$failoverCheckIsp id=\$id;\r\
+    \n\r\
+    \n\r\
+    \n\r\
+    \n"
+add dont-require-permissions=no name=failoverNotificadorCambioIsps owner=\
+    admin policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    ####################################################################\r\
+    \n# Notificador de cambio en ISPs \r\
+    \n#####################################################################\r\
+    \n\r\
+    \n# Carga del failoverConfig\r\
+    \n/system/script/run failoverConfig;\r\
+    \n\r\
+    \n# Variables globales\r\
+    \n:global foIsps;\r\
+    \n:global foCorreoAdministrador;\r\
+    \n:local cadIspsActivos \"\";\r\
+    \n:local cadIspsCaidos \"\";\r\
+    \n:local tiempo;\r\
+    \n:local fecha;\r\
+    \n:local identidad [/system identity get name];\r\
+    \n\r\
+    \n# Armado de la \$cadIspsActivos y \$cadIspsCaidos\r\
+    \n:foreach id,v in=[\$foIsps] do={\r\
+    \n    :if ( (\$v->\"estado_actual\")=1 ) do={ :set cadIspsActivos (\$cadIs\
+    psActivos.\", ISP \".\$id); };\r\
+    \n    :if ( (\$v->\"estado_actual\")=0 ) do={ :set cadIspsCaidos  (\$cadIs\
+    psCaidos.\", ISP \".\$id); };\r\
+    \n}\r\
+    \n\r\
+    \n\r\
+    \n# Envo de correo de notificacin de ISP Caido\r\
+    \n:if ( \$foCorreoAdministrador != \"\" ) do={\r\
+    \n    :set tiempo [/system/clock/get time];\r\
+    \n    :set fecha [/system/clock/get date];\r\
+    \n\r\
+    \n    /tool/e-mail/send to=\"\$foCorreoAdministrador\" subject=\"Cambio de\
+    \_ISPs en el router \$identidad\" \\ \r\
+    \n        body=\"El \$fecha a las \$tiempo, los ISPs activos son: \$cadIsp\
+    sActivos y los ISPs cados son: \$cadIspsCaidos.\";\r\
+    \n\r\
+    \n    :log info \"Se envi la notificacin con los cambios en los estados de\
+    \_ISPs\";\r\
+    \n    :delay 1;\r\
+    \n}\r\
+    \n\r\
+    \n:if ( \$foCorreoAdministrador = \"\" ) do={\r\
+    \n    :log info \"No se envi la notificacin porque la variable foCorreoAdm\
+    inistrador est en blanco\";\r\
+    \n}"
+/tool e-mail
+set address=smtp.gmail.com from="MikroTik PCC V5 - Balanceador " password=\
+    gvfosqzsppahcuya port=587 start-tls=yes user=\
+    comunicacioneshcaborca@gmail.com
